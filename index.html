@@ -701,13 +701,40 @@
   }
 
   async function loadShared(){
+    let localData = null;
+    try {
+      const raw = localStorage.getItem(LS_SHARED_KEY);
+      if (raw) localData = JSON.parse(raw);
+    } catch(e) {}
+
     if(HAS_FIREBASE){
       try{
         const snapshot = await db.ref('roteiros/' + roteiroId).once('value');
-        if(snapshot.exists()) return snapshot.val();
-      }catch(e){}
-      return null;
+        if(snapshot.exists()) {
+          const dbData = snapshot.val();
+          const localTime = (localData && localData.updatedAt) ? localData.updatedAt : 0;
+          const dbTime = (dbData && dbData.updatedAt) ? dbData.updatedAt : 0;
+          
+          if (localTime > dbTime) {
+            data = localData;
+            await saveShared();
+            return localData;
+          }
+          return dbData;
+        } else {
+          if (localData) {
+            data = localData;
+            await saveShared();
+            return localData;
+          }
+        }
+      }catch(e){
+        console.error("Erro ao ler do Firebase, usando local:", e);
+      }
     }
+    
+    if (localData) return localData;
+
     if(HAS_REMOTE_STORAGE){
       try{
         const res = await window.storage.get('roteiro:data', true);
@@ -715,23 +742,21 @@
       }catch(e){}
       return null;
     }
-    try{
-      const raw = localStorage.getItem(LS_SHARED_KEY);
-      return raw ? JSON.parse(raw) : null;
-    }catch(e){ return null; }
+    return null;
   }
+
   async function saveShared(){
     data.updatedAt = Date.now();
     syncDot.classList.add('pending');
     try{
+      localStorage.setItem(LS_SHARED_KEY, JSON.stringify(data));
       if(HAS_FIREBASE){
         await db.ref('roteiros/' + roteiroId).set(data);
       } else if(HAS_REMOTE_STORAGE){
         await window.storage.set('roteiro:data', JSON.stringify(data), true);
-      } else {
-        localStorage.setItem(LS_SHARED_KEY, JSON.stringify(data));
       }
     }catch(e){
+      console.error(e);
       toast('Não deu pra salvar — tenta de novo em instantes.');
     }finally{
       syncDot.classList.remove('pending');
