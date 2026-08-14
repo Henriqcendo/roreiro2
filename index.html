@@ -595,6 +595,30 @@
     window.history.replaceState({}, '', url);
   }
 
+  function parseFirebaseConfig(text) {
+    try {
+      return JSON.parse(text);
+    } catch (e) {}
+
+    const fields = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+    const config = {};
+    let foundAny = false;
+
+    fields.forEach(field => {
+      const regex = new RegExp(`['"]?${field}['"]?\\s*:\\s*['"]([^'"]+)['"]`);
+      const match = text.match(regex);
+      if (match && match[1]) {
+        config[field] = match[1].trim();
+        foundAny = true;
+      }
+    });
+
+    if (foundAny && config.apiKey && config.projectId) {
+      return config;
+    }
+    throw new Error("Configuração inválida");
+  }
+
   function initFirebase(config) {
     try {
       if (firebase.apps.length === 0) {
@@ -1359,9 +1383,9 @@
     
     let parsedConfig;
     try {
-      parsedConfig = JSON.parse(rawConfig);
+      parsedConfig = parseFirebaseConfig(rawConfig);
     } catch (e) {
-      toast('JSON de configuração inválido. Verifique o formato.');
+      toast('Configuração inválida. Certifique-se de copiar o JSON ou o código do console do Firebase.');
       fFirebaseConfig.focus();
       return;
     }
