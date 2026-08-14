@@ -1049,6 +1049,15 @@
     mainEl.querySelectorAll('[data-star]').forEach(b=>{
       b.addEventListener('click', ()=> toggleStar(b.dataset.star));
     });
+    mainEl.querySelectorAll('.item-card').forEach(card=>{
+      card.addEventListener('click', (e)=>{
+        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('img') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('.drag-handle') || e.target.closest('.heart-chip') || e.target.closest('.move-actions') || e.target.closest('.item-actions')) {
+          return;
+        }
+        const itemId = card.dataset.item;
+        toggleStar(itemId);
+      });
+    });
     mainEl.querySelectorAll('[data-heart]').forEach(b=>{
       b.addEventListener('click', ()=> toggleHeart(b.dataset.heart));
     });
