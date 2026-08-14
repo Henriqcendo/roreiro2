@@ -1128,6 +1128,7 @@
 
   function moveWithinList(dayId, catKey, itemId, dir){
     const day = data.days.find(d=>d.id===dayId);
+    if (!day || !day.categories || !day.categories[catKey]) return;
     const arr = day.categories[catKey];
     const idx = arr.findIndex(i=>i.id===itemId);
     const newIdx = idx + dir;
@@ -1184,11 +1185,15 @@
 
   function performMove(src, targetDayId, targetCatKey, targetIndex){
     const srcDay = data.days.find(d=>d.id===src.day);
+    if (!srcDay || !srcDay.categories || !srcDay.categories[src.cat]) return;
     const srcArr = srcDay.categories[src.cat];
     const idx = srcArr.findIndex(i=>i.id===src.id);
     if(idx===-1) return;
     const [it] = srcArr.splice(idx,1);
     const tgtDay = data.days.find(d=>d.id===targetDayId);
+    if (!tgtDay) return;
+    if (!tgtDay.categories) tgtDay.categories = {};
+    if (!tgtDay.categories[targetCatKey]) tgtDay.categories[targetCatKey] = [];
     const tgtArr = tgtDay.categories[targetCatKey];
     let insertAt = targetIndex;
     if(srcDay.id===tgtDay.id && src.cat===targetCatKey && idx < targetIndex) insertAt -= 1;
@@ -1231,7 +1236,7 @@
   function findItem(itemId){
     for(const day of data.days){
       for(const c of CATS){
-        const arr = day.categories[c.key];
+        const arr = (day.categories && day.categories[c.key]) ? day.categories[c.key] : [];
         const found = arr.find(i=>i.id===itemId);
         if(found) return found;
       }
@@ -1241,7 +1246,7 @@
 
   function deleteItem(dayId, catKey, itemId){
     const day = data.days.find(d=>d.id===dayId);
-    if(!day) return;
+    if(!day || !day.categories || !day.categories[catKey]) return;
     const it = day.categories[catKey].find(i=>i.id===itemId);
     if(!confirm(`Excluir "${it ? it.name : 'este item'}"?`)) return;
     day.categories[catKey] = day.categories[catKey].filter(i=>i.id!==itemId);
@@ -1294,19 +1299,28 @@
     const mapLinkVal = document.getElementById('f-maplink').value.trim();
     if(itemId){
       const oldDay = data.days.find(d=>d.id===dayId);
+      if (!oldDay || !oldDay.categories || !oldDay.categories[catKey]) return;
       const it = oldDay.categories[catKey].find(i=>i.id===itemId);
       it.name = name; it.distance = fDistance.value.trim(); it.duo = fDuo.value; it.notes = fNotes.value.trim();
       it.customMapLink = mapLinkVal;
       if(newDayId!==dayId || newCatKey!==catKey){
         oldDay.categories[catKey] = oldDay.categories[catKey].filter(i=>i.id!==itemId);
         const newDay = data.days.find(d=>d.id===newDayId);
-        newDay.categories[newCatKey].push(it);
+        if (newDay) {
+          if (!newDay.categories) newDay.categories = {};
+          if (!newDay.categories[newCatKey]) newDay.categories[newCatKey] = [];
+          newDay.categories[newCatKey].push(it);
+        }
       }
     } else {
       const newItem = item(name, fDistance.value.trim(), fDuo.value, fNotes.value.trim());
       newItem.customMapLink = mapLinkVal;
       const newDay = data.days.find(d=>d.id===newDayId);
-      newDay.categories[newCatKey].push(newItem);
+      if (newDay) {
+        if (!newDay.categories) newDay.categories = {};
+        if (!newDay.categories[newCatKey]) newDay.categories[newCatKey] = [];
+        newDay.categories[newCatKey].push(newItem);
+      }
     }
     itemOverlay.classList.remove('show');
     saveShared(); render();
