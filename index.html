@@ -597,8 +597,16 @@
 
   function parseFirebaseConfig(text) {
     try {
-      return JSON.parse(text);
-    } catch (e) {}
+      const parsed = JSON.parse(text);
+      if (parsed && !parsed.databaseURL) {
+        throw new Error("Chave databaseURL não encontrada. Certifique-se de que criou o Realtime Database no Firebase!");
+      }
+      return parsed;
+    } catch (e) {
+      if (e.message && e.message.indexOf("databaseURL") !== -1) {
+        throw e;
+      }
+    }
 
     const fields = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
     const config = {};
@@ -614,13 +622,19 @@
     });
 
     if (foundAny && config.apiKey && config.projectId) {
+      if (!config.databaseURL) {
+        throw new Error("Chave databaseURL não encontrada. Certifique-se de que criou o Realtime Database no Firebase!");
+      }
       return config;
     }
-    throw new Error("Configuração inválida");
+    throw new Error("Formato inválido. Certifique-se de colar as credenciais corretas do Firebase.");
   }
 
   function initFirebase(config) {
     try {
+      if (!config.databaseURL) {
+        throw new Error("URL do banco de dados (databaseURL) ausente.");
+      }
       if (firebase.apps.length === 0) {
         firebase.initializeApp(config);
       }
@@ -633,7 +647,7 @@
       setupFirebaseListener();
     } catch (e) {
       console.error("Falha ao inicializar o Firebase:", e);
-      toast("Erro ao conectar no Firebase. Verifique o JSON.");
+      toast("Erro de conexão: " + e.message);
       HAS_FIREBASE = false;
       syncDot.style.background = 'var(--gold)';
       syncDot.title = 'Erro de conexão com o Firebase';
@@ -1385,7 +1399,7 @@
     try {
       parsedConfig = parseFirebaseConfig(rawConfig);
     } catch (e) {
-      toast('Configuração inválida. Certifique-se de copiar o JSON ou o código do console do Firebase.');
+      toast(e.message);
       fFirebaseConfig.focus();
       return;
     }
